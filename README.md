@@ -55,8 +55,10 @@ src/features.py        the statistics battery + band filtering
 src/labels.py          match .mat sentences to csv labels
 src/classification.py  cross-validation, classifiers, metrics
 src/plots.py           confusion matrices, per-subject bars
+src/tables.py          results tree -> summary / per-subject tables
 extract_features.py    .mat -> cached per-subject feature .npz  (slow, once)
 run.py                 cached features -> classification + plots
+make_tables.py         results tree -> csv + markdown tables
 ```
 
 ## Running
@@ -73,12 +75,17 @@ python run.py --features-dir features --output-dir results
 # other classifiers / a single protocol
 python run.py --classifier svm --mode pooled
 python run.py --classifier rf  --mode subject
+
+# 3. collect everything into tables (csv + markdown)
+python make_tables.py --results-dir results
 ```
 
 `extract_features.py` is resumable — a subject whose `.npz` already exists is
 skipped (`--overwrite` to recompute). Results land in
 `results/subject/<SUBJ>/<clf>.json`, `results/subject/summary_<clf>.json`,
-`results/pooled/<clf>.json`, with plots under `results/plots/`.
+`results/pooled/<clf>.json`, with plots under `results/plots/` and tables under
+`results/tables/`. `make_tables.py` also prints the headline table as Markdown
+so it pastes straight in here.
 
 If your EEG isn't sampled at 500 Hz, pass `--fs`.
 
