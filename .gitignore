@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# extracted feature caches and run outputs
+features/
+results/
+*.npz
+
+# raw ZuCo data is large and not redistributed here
+*.mat
+
+.venv/
+venv/
+.DS_Store
