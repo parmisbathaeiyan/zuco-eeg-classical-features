@@ -32,8 +32,10 @@ def parse_args():
     p.add_argument("--out-dir", default="features")
     p.add_argument("--fs", type=float, default=DEFAULT_FS, help="EEG sampling rate (Hz)")
     p.add_argument("--stats", choices=["full", "reduced"], default="full")
-    p.add_argument("--no-bandpass", action="store_true",
-                   help="skip band filtering; use raw stats + ZuCo band means only")
+    p.add_argument("--bandpass", action="store_true",
+                   help="also band-pass filter the raw into the 8 bands and run "
+                        "the stats battery on each (off by default; ZuCo's mean_* "
+                        "band power is always included)")
     p.add_argument("--no-band-means", action="store_true",
                    help="drop the original mean_t1..mean_g2 fields")
     p.add_argument("--overwrite", action="store_true")
@@ -49,7 +51,7 @@ def process_file(path, lookup, args):
 
     extractor = FeatureExtractor(
         fs=args.fs, n_channels=n_channels, stats=args.stats,
-        bandpass=not args.no_bandpass, use_band_means=not args.no_band_means)
+        bandpass=args.bandpass, use_band_means=not args.no_band_means)
 
     X, sent_ids, labels, contents = [], [], [], []
     for s in sentences:

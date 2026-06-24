@@ -19,17 +19,20 @@ rms, mav (mean abs), line length, zero-crossing rate,
 Hjorth mobility, Hjorth complexity
 ```
 
-The same battery is applied to each of the eight ZuCo frequency bands (theta1/2,
-alpha1/2, beta1/2, gamma1/2), obtained by zero-phase Butterworth band-pass
-filtering the raw signal. ZuCo's own per-electrode sentence-level band means
-(`mean_t1 ... mean_g2`) are passed through as an extra block.
+For the frequency bands we don't recompute anything: ZuCo already band-pass
+filtered the EEG and stores the per-electrode sentence-level band power as
+`mean_t1 ... mean_g2` (theta1/2, alpha1/2, beta1/2, gamma1/2), so we read those
+eight vectors straight through as an extra block.
 
-So with the default settings each sentence becomes roughly
-`channels x (16 raw + 16x8 band + 8 band-mean)` features. Everything is
-NaN-aware: missing EEG stays NaN and is imputed inside the CV pipeline.
+So by default each sentence becomes `channels x (16 raw + 8 band-mean)` features
+(~2.5k at 105 channels). Everything is NaN-aware: missing EEG stays NaN and is
+imputed inside the CV pipeline.
 
-`--stats reduced` (a 6-stat subset) and `--no-bandpass` shrink that if it's too
-wide for your machine.
+`--stats reduced` (a 6-stat subset) trims it further. `--bandpass` opts into the
+heavier version: it additionally band-pass filters the raw signal into the same
+eight bands and runs the full stats battery on each (16x8 more features per
+channel) — useful only if you want band *variance/RMS/etc.*, which ZuCo's means
+don't carry.
 
 ## Evaluation
 

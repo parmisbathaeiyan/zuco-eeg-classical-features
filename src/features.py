@@ -102,7 +102,7 @@ class FeatureExtractor:
     sentence and every subject produces the same columns in the same order.
     """
 
-    def __init__(self, fs, n_channels, stats="full", bandpass=True,
+    def __init__(self, fs, n_channels, stats="full", bandpass=False,
                  use_band_means=True):
         self.fs = fs
         self.n_channels = n_channels
