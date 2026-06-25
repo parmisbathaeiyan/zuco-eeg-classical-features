@@ -7,8 +7,9 @@ Reads the JSON that run.py writes and produces:
 * a per-subject table per classifier;
 * report.md, which stitches the headline numbers and both tables into one file.
 
-Everything is dependency-light (no `tabulate`) so report.md drops straight into
-a README or a thesis appendix.
+Per-subject majority comes from each subject's own result json, so the report is
+correct even if the across-subject summary was written by an older run. Nothing
+here needs `tabulate`, so report.md drops straight into a README or appendix.
 """
 
 import glob
@@ -42,6 +43,19 @@ def _paths(results_dir, clf):
             _exists(os.path.join(results_dir, "pooled", f"{clf}.json")))
 
 
+def _per_subject_results(results_dir, clf):
+    """subject -> result dict, read from results/subject/<SUBJECT>/<clf>.json."""
+    out = {}
+    for p in glob.glob(os.path.join(results_dir, "subject", "*", f"{clf}.json")):
+        out[os.path.basename(os.path.dirname(p))] = _load(p)
+    return out
+
+
+def _mean(values):
+    values = [v for v in values if v == v]  # drop NaN
+    return sum(values) / len(values) if values else float("nan")
+
+
 def _delta(value, baseline):
     return f"{value - baseline:+.3f}"
 
@@ -53,7 +67,8 @@ def summary_table(results_dir):
         row = {"classifier": clf}
         if subj_path:
             s = _load(subj_path)
-            base = s.get("majority_mean", float("nan"))
+            base = _mean([r.get("majority_baseline", float("nan"))
+                          for r in _per_subject_results(results_dir, clf).values()])
             row["n_subjects"] = s["n_subjects"]
             row["subj_acc"] = f"{s['accuracy_mean']:.3f} +/- {s['accuracy_std']:.3f}"
             row["subj_macro_f1"] = f"{s['macro_f1_mean']:.3f} +/- {s['macro_f1_std']:.3f}"
@@ -70,15 +85,13 @@ def summary_table(results_dir):
 
 
 def per_subject_table(results_dir, classifier):
-    s = _load(os.path.join(results_dir, "subject", f"summary_{classifier}.json"))
-    acc, f1 = s["per_subject_accuracy"], s["per_subject_macro_f1"]
-    maj = s.get("per_subject_majority", {})
+    res = _per_subject_results(results_dir, classifier)
     rows = []
-    for k in acc:
-        base = maj.get(k, float("nan"))
-        rows.append({"subject": k, "accuracy": round(acc[k], 3),
-                     "macro_f1": round(f1[k], 3), "majority": round(base, 3),
-                     "vs_base": round(acc[k] - base, 3)})
+    for s, r in res.items():
+        base = r.get("majority_baseline", float("nan"))
+        rows.append({"subject": s, "accuracy": round(r["accuracy"], 3),
+                     "macro_f1": round(r["macro_f1"], 3), "majority": round(base, 3),
+                     "vs_base": round(r["accuracy"] - base, 3)})
     return pd.DataFrame(rows).sort_values("subject").reset_index(drop=True)
 
 
@@ -95,7 +108,8 @@ def _headline(results_dir, clf):
     bits = []
     if subj_path:
         s = _load(subj_path)
-        base = s.get("majority_mean", float("nan"))
+        base = _mean([r.get("majority_baseline", float("nan"))
+                      for r in _per_subject_results(results_dir, clf).values()])
         bits.append(f"subject-specific acc {s['accuracy_mean']:.3f} "
                     f"+/- {s['accuracy_std']:.3f} (majority {base:.3f}, "
                     f"{_delta(s['accuracy_mean'], base)})")
