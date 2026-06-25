@@ -14,6 +14,7 @@ you can see which feature *families*, if any, carry the most.
 """
 
 import os
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -54,9 +55,14 @@ def _spearman_columns(X, y):
 
 
 def feature_association(X, y, feature_names, mutual_info=False, seed=42):
-    X = SimpleImputer(strategy="median").fit_transform(X)
-    F, p = f_classif(X, y)
-    r = _spearman_columns(X, y)
+    # keep_empty_features so all-NaN columns (e.g. a flat reference channel) stay
+    # as constant 0s and the output stays aligned with feature_names.
+    X = SimpleImputer(strategy="median", keep_empty_features=True).fit_transform(X)
+    with warnings.catch_warnings(), np.errstate(invalid="ignore", divide="ignore"):
+        warnings.simplefilter("ignore")  # constant-feature / divide noise
+        F, p = f_classif(X, y)
+        r = _spearman_columns(X, y)
+        mi = mutual_info_classif(X, y, random_state=seed) if mutual_info else None
     data = {
         "feature": feature_names,
         "f_score": np.nan_to_num(F, nan=0.0),
@@ -64,8 +70,8 @@ def feature_association(X, y, feature_names, mutual_info=False, seed=42):
         "spearman_r": r,
         "abs_spearman": np.abs(r),
     }
-    if mutual_info:
-        data["mutual_info"] = mutual_info_classif(X, y, random_state=seed)
+    if mi is not None:
+        data["mutual_info"] = mi
     df = pd.DataFrame(data)
     meta = pd.DataFrame([parse_name(n) for n in feature_names])
     return pd.concat([df, meta], axis=1)
