@@ -58,3 +58,17 @@ def subject_bar(summary, out_path, title="Subject-specific accuracy"):
     fig.tight_layout()
     fig.savefig(out_path, dpi=140)
     plt.close(fig)
+
+
+def barh_series(series, title, xlabel, out_path, color="#54A24B"):
+    """Horizontal bar chart of a label -> score pandas Series (already ordered)."""
+    labels = [str(i) for i in series.index]
+    fig, ax = plt.subplots(figsize=(6.4, max(2.6, 0.34 * len(labels))))
+    ax.barh(range(len(labels)), series.values, color=color)
+    ax.set_yticks(range(len(labels)), labels)
+    ax.invert_yaxis()  # biggest at the top
+    ax.set_xlabel(xlabel)
+    ax.set_title(title, fontsize=11)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=140)
+    plt.close(fig)

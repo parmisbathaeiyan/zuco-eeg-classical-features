@@ -57,11 +57,13 @@ src/zuco_io.py         read the original .mat (h5py, scipy fallback)
 src/features.py        the statistics battery + band filtering
 src/labels.py          match .mat sentences to csv labels
 src/classification.py  cross-validation, classifiers, metrics
-src/plots.py           confusion matrices, per-subject bars
+src/associations.py    univariate feature - label association
+src/plots.py           confusion matrices, per-subject bars, association bars
 src/tables.py          results tree -> summary / per-subject tables
 extract_features.py    .mat -> cached per-subject feature .npz  (slow, once)
 run.py                 cached features -> classification + plots
 make_tables.py         results tree -> csv + markdown tables
+analyze_features.py    cached features -> feature - label association
 ```
 
 ## Running
@@ -93,6 +95,26 @@ accuracy vs baseline, pooled confusion matrix) and tables under
 majority baseline) and prints it.
 
 If your EEG isn't sampled at 500 Hz, pass `--fs`.
+
+## Feature - label association
+
+A separate, classifier-free view of how each feature relates to sentiment:
+
+```bash
+python analyze_features.py --features-dir features --output-dir results
+python analyze_features.py --mutual-info      # also compute MI (slower)
+```
+
+It pools every subject and scores each feature three conventional ways — ANOVA
+F-test, Spearman against the ordinal label, and (optional) mutual information —
+writing `results/associations/feature_association.csv`, roll-ups by stat and
+band, bar plots, and an `associations.md`. The headline it reports is how many
+features clear p < 0.05 versus how many would by chance (`0.05 x n_features`); if
+those are similar there is no real univariate signal.
+
+This is univariate screening, not RSA — it relates single features to the label,
+rather than comparing the pairwise-similarity structure of EEG patterns to a
+label-based similarity structure.
 
 ## Colab
 
