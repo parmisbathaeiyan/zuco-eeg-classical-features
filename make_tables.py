@@ -26,8 +26,8 @@ def main():
     summary, report = write_tables(args.results_dir, out_dir)
     if summary.empty:
         raise SystemExit(f"no results found under {args.results_dir}")
-    print(report)
-    print(f"written -> {out_dir} (summary.csv, summary.md, per_subject_*.csv, report.md)")
+    print(summary.to_string(index=False))   # clean aligned table, no markdown
+    print(f"\nwritten -> {out_dir} (summary.csv, summary.md, per_subject_*.csv, report.md)")
 
 
 if __name__ == "__main__":
