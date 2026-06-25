@@ -27,8 +27,10 @@ from src.zuco_io import iter_sentences, subject_from_path
 def parse_args():
     p = argparse.ArgumentParser(description="Extract classical EEG features from ZuCo .mat files.")
     p.add_argument("--mat-dir", required=True,
-                   help="folder containing results*_SR.mat")
-    p.add_argument("--labels-csv", default="data/zuco_sentiment_labels_task1_fixed.csv")
+                   help="folder containing the EEG results*_SR.mat files")
+    p.add_argument("--labels-csv", default="data/zuco_sentiment_labels_task1_fixed.csv",
+                   help="sentiment label csv; independent of --mat-dir "
+                        "(default: the fixed csv bundled in the repo)")
     p.add_argument("--out-dir", default="features")
     p.add_argument("--fs", type=float, default=DEFAULT_FS, help="EEG sampling rate (Hz)")
     p.add_argument("--stats", choices=["full", "reduced"], default="full")
