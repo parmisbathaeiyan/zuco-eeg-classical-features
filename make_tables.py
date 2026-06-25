@@ -23,11 +23,11 @@ def parse_args():
 def main():
     args = parse_args()
     out_dir = args.out_dir or os.path.join(args.results_dir, "tables")
-    summary, md = write_tables(args.results_dir, out_dir)
+    summary, report = write_tables(args.results_dir, out_dir)
     if summary.empty:
         raise SystemExit(f"no results found under {args.results_dir}")
-    print(md)
-    print(f"\nwritten -> {out_dir}")
+    print(report)
+    print(f"written -> {out_dir} (summary.csv, summary.md, per_subject_*.csv, report.md)")
 
 
 if __name__ == "__main__":

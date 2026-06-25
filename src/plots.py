@@ -1,10 +1,12 @@
-"""Minimal result plots: confusion matrices and a per-subject accuracy bar."""
+"""Result plots: per-subject accuracy vs baseline, and confusion matrices."""
 
 import numpy as np
 
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
+N_CLASSES = 3  # chance line
 
 
 def confusion_plot(result, title, out_path):
@@ -31,19 +33,28 @@ def confusion_plot(result, title, out_path):
 
 
 def subject_bar(summary, out_path, title="Subject-specific accuracy"):
+    """Horizontal bars of per-subject accuracy, sorted, with each subject's
+    majority baseline marked and the chance line drawn, so above/below baseline
+    reads at a glance."""
     accs = summary["per_subject_accuracy"]
-    subjects = list(accs.keys())
-    values = [accs[s] for s in subjects]
+    majs = summary.get("per_subject_majority", {})
+    subjects = sorted(accs, key=accs.get)
+    acc_vals = [accs[s] for s in subjects]
+    maj_vals = [majs.get(s, np.nan) for s in subjects]
+    y = range(len(subjects))
 
-    fig, ax = plt.subplots(figsize=(max(5, len(subjects) * 0.5), 3.6))
-    ax.bar(range(len(subjects)), values, color="#4C78A8")
-    ax.axhline(summary["accuracy_mean"], color="black", ls="--", lw=1,
+    fig, ax = plt.subplots(figsize=(6.4, max(3.0, 0.42 * len(subjects))))
+    ax.barh(y, acc_vals, color="#4C78A8", label="model accuracy")
+    ax.scatter(maj_vals, list(y), color="#E45756", marker="|", s=320, zorder=3,
+               label="majority baseline")
+    ax.axvline(1 / N_CLASSES, color="gray", ls=":", lw=1, label="chance (1/3)")
+    ax.axvline(summary["accuracy_mean"], color="black", ls="--", lw=1,
                label=f"mean {summary['accuracy_mean']:.3f}")
-    ax.set_xticks(range(len(subjects)), subjects, rotation=45, ha="right")
-    ax.set_ylabel("accuracy")
-    ax.set_ylim(0, 1)
+    ax.set_yticks(list(y), subjects)
+    ax.set_xlabel("accuracy")
+    ax.set_xlim(0, max(0.55, max(acc_vals + [v for v in maj_vals if v == v]) + 0.05))
     ax.set_title(title, fontsize=11)
-    ax.legend()
+    ax.legend(loc="lower right", fontsize=8, framealpha=0.9)
     fig.tight_layout()
     fig.savefig(out_path, dpi=140)
     plt.close(fig)

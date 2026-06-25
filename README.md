@@ -86,9 +86,11 @@ python make_tables.py --results-dir results
 `extract_features.py` is resumable — a subject whose `.npz` already exists is
 skipped (`--overwrite` to recompute). Results land in
 `results/subject/<SUBJ>/<clf>.json`, `results/subject/summary_<clf>.json`,
-`results/pooled/<clf>.json`, with plots under `results/plots/` and tables under
-`results/tables/`. `make_tables.py` also prints the headline table as Markdown
-so it pastes straight in here.
+`results/pooled/<clf>.json`, with plots under `results/plots/` (per-subject
+accuracy vs baseline, pooled confusion matrix) and tables under
+`results/tables/`. `make_tables.py` also writes a consolidated `report.md`
+(headline numbers + summary + per-subject tables, each with the gap to the
+majority baseline) and prints it.
 
 If your EEG isn't sampled at 500 Hz, pass `--fs`.
 

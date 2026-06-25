@@ -109,12 +109,15 @@ def summarise_subjects(per_subject):
     """Mean +/- std of the headline metrics across subject-specific runs."""
     accs = [r["accuracy"] for r in per_subject.values()]
     f1s = [r["macro_f1"] for r in per_subject.values()]
+    majs = [r["majority_baseline"] for r in per_subject.values()]
     return {
         "n_subjects": len(per_subject),
         "accuracy_mean": float(np.mean(accs)),
         "accuracy_std": float(np.std(accs)),
         "macro_f1_mean": float(np.mean(f1s)),
         "macro_f1_std": float(np.std(f1s)),
+        "majority_mean": float(np.mean(majs)),
         "per_subject_accuracy": {s: r["accuracy"] for s, r in per_subject.items()},
         "per_subject_macro_f1": {s: r["macro_f1"] for s, r in per_subject.items()},
+        "per_subject_majority": {s: r["majority_baseline"] for s, r in per_subject.items()},
     }

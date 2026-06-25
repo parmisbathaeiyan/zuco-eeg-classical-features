@@ -12,11 +12,16 @@ import argparse
 import glob
 import json
 import os
+import warnings
 
 import numpy as np
 
 from src.classification import cross_validate, summarise_subjects
 from src.plots import confusion_plot, subject_bar
+
+# Some channels are flat (e.g. a reference), so a few shape stats are all-NaN and
+# the imputer drops them. Expected and harmless; don't spam it once per fold.
+warnings.filterwarnings("ignore", message="Skipping features without any observed values")
 
 
 def parse_args():
@@ -54,9 +59,6 @@ def run_subject(args, files, plots_dir):
         print(f"  {subject}: acc {result['accuracy']:.3f}  "
               f"macro-F1 {result['macro_f1']:.3f}  "
               f"(majority {result['majority_baseline']:.3f})")
-        if not args.no_plots:
-            confusion_plot(result, f"{subject} ({args.classifier})",
-                           os.path.join(plots_dir, f"cm_subject_{subject}_{args.classifier}.png"))
 
     summary = summarise_subjects(per_subject)
     save_json(summary, os.path.join(
