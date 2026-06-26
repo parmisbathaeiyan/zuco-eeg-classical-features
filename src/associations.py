@@ -85,16 +85,16 @@ def analyze(X, y, feature_names, out_dir, mutual_info=False, top_k=20, seed=42):
     top = df.sort_values("f_score", ascending=False).head(top_k)
     top.to_csv(os.path.join(out_dir, "top_features.csv"), index=False)
 
-    by_stat = df.dropna(subset=["stat"]).groupby("stat")["f_score"].mean().sort_values(ascending=False)
-    by_band = df.dropna(subset=["band"]).groupby("band")["f_score"].mean().sort_values(ascending=False)
-    by_stat.to_csv(os.path.join(out_dir, "by_stat.csv"))
-    by_band.to_csv(os.path.join(out_dir, "by_band.csv"))
+    by_stat = _group_summary(df, "stat")
+    by_band = _group_summary(df, "band")
+    by_stat.to_csv(os.path.join(out_dir, "by_stat.csv"), index=False)
+    by_band.to_csv(os.path.join(out_dir, "by_band.csv"), index=False)
 
-    barh_series(by_stat, "Mean ANOVA F by statistic", "mean F",
-                os.path.join(out_dir, "by_stat.png"))
+    barh_series(by_stat.set_index("stat")["mean_F"][::-1], "Mean ANOVA F by statistic",
+                "mean F", os.path.join(out_dir, "by_stat.png"))
     if len(by_band):
-        barh_series(by_band, "Mean ANOVA F by band (band means)", "mean F",
-                    os.path.join(out_dir, "by_band.png"))
+        barh_series(by_band.set_index("band")["mean_F"][::-1], "Mean ANOVA F by band (band means)",
+                    "mean F", os.path.join(out_dir, "by_band.png"))
     barh_series(top.set_index("feature")["f_score"][::-1], f"Top {top_k} features by F",
                 "F", os.path.join(out_dir, "top_features.png"), color="#4C78A8")
 
@@ -104,6 +104,21 @@ def analyze(X, y, feature_names, out_dir, mutual_info=False, top_k=20, seed=42):
     return df, md
 
 
+def _group_summary(df, key):
+    """Per family (stat or band): mean F, how many of its features clear p<0.05,
+    and the smallest p. n_sig is the readable significance number; compare it to
+    ~5% of n_features (what chance gives)."""
+    g = df.dropna(subset=[key]).groupby(key)
+    out = pd.DataFrame({
+        "n_features": g.size(),
+        "n_sig_p05": g["f_pvalue"].apply(lambda s: int((s < 0.05).sum())),
+        "min_p": g["f_pvalue"].min().round(4),
+        "mean_F": g["f_score"].mean().round(3),
+    }).sort_values("mean_F", ascending=False).reset_index()
+    out["expected_by_chance"] = (0.05 * out["n_features"]).round(1)
+    return out[[key, "n_features", "n_sig_p05", "expected_by_chance", "min_p", "mean_F"]]
+
+
 def _report(df, top, by_stat, by_band, top_k):
     n = len(df)
     n_sig = int((df["f_pvalue"] < 0.05).sum())
@@ -111,15 +126,17 @@ def _report(df, top, by_stat, by_band, top_k):
     strongest = df.loc[df["abs_spearman"].idxmax()]
     lines = [
         "# Feature - label association", "",
-        f"{n} features, pooled across subjects. **{n_sig}** pass ANOVA p < 0.05; "
-        f"~{expected:.0f} would by chance alone. Strongest Spearman is "
-        f"`{strongest['feature']}` at r = {strongest['spearman_r']:+.3f}.", "",
-        f"## Top {top_k} features (by ANOVA F)", "",
+        f"{n} features, pooled across subjects (rows = all subjects' sentences). "
+        f"**{n_sig}** pass ANOVA p < 0.05; ~{expected:.0f} would by chance alone "
+        f"(0.05 x {n}). Strongest Spearman is `{strongest['feature']}` at "
+        f"r = {strongest['spearman_r']:+.3f} (range -1..1).", "",
+        f"## Top {top_k} features (by ANOVA F, with p)", "",
         to_markdown(top[["feature", "f_score", "f_pvalue", "spearman_r"]].round(4)),
-        "", "## Mean F by statistic", "",
-        to_markdown(by_stat.round(3).reset_index().rename(columns={"f_score": "mean_F"})),
+        "", "## By statistic", "",
+        "`n_sig_p05` = channels with p<0.05 (compare to `expected_by_chance`); "
+        "`mean_F` ranks families but isn't a significance test.", "",
+        to_markdown(by_stat),
     ]
     if len(by_band):
-        lines += ["", "## Mean F by band (band-mean features)", "",
-                  to_markdown(by_band.round(3).reset_index().rename(columns={"f_score": "mean_F"}))]
+        lines += ["", "## By band (band-mean features)", "", to_markdown(by_band)]
     return "\n".join(lines) + "\n"
