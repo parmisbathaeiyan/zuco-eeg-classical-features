@@ -58,12 +58,14 @@ src/features.py        the statistics battery + band filtering
 src/labels.py          match .mat sentences to csv labels
 src/classification.py  cross-validation, classifiers, metrics
 src/associations.py    univariate feature - label association
+src/montage.py         scalp topomaps from electrode coordinates
 src/plots.py           confusion matrices, per-subject bars, association bars
 src/tables.py          results tree -> summary / per-subject tables
 extract_features.py    .mat -> cached per-subject feature .npz  (slow, once)
 run.py                 cached features -> classification + plots
 make_tables.py         results tree -> csv + markdown tables
 analyze_features.py    cached features -> feature - label association
+plot_montage.py        association csv + montage -> per-family scalp topomaps
 ```
 
 ## Running
