@@ -23,6 +23,8 @@ def parse_args():
     p.add_argument("--results-dir", default="results")
     p.add_argument("--montage", default="zuco_montage.npz")
     p.add_argument("--score", choices=["f_score", "spearman_r"], default="f_score")
+    p.add_argument("--out-dir", default=None,
+                   help="where to write the topomaps (default <results-dir>/montage)")
     return p.parse_args()
 
 
@@ -51,7 +53,7 @@ def main():
     if df["channel"].max() >= n_ch:
         raise SystemExit(f"feature channels exceed montage size ({n_ch})")
 
-    out_dir = os.path.join(args.results_dir, "montage")
+    out_dir = args.out_dir or os.path.join(args.results_dir, "montage")
     os.makedirs(out_dir, exist_ok=True)
     cmap = "RdBu_r" if args.score == "spearman_r" else "magma"
     center = 0.0 if args.score == "spearman_r" else None

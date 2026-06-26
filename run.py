@@ -34,6 +34,9 @@ def parse_args():
     p.add_argument("--n-folds", type=int, default=5)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--no-plots", action="store_true")
+    p.add_argument("--plots-dir", default=None,
+                   help="where to write plots (default <output-dir>/plots); point "
+                        "at a scratch dir to keep the results tree numbers-only")
     p.add_argument("--channel-avg", action="store_true",
                    help="collapse the per-channel features to 24 family means "
                         "(16 stats + 8 band-means) before classifying")
@@ -107,8 +110,9 @@ def main():
     if not files:
         raise SystemExit(f"no .npz feature files in {args.features_dir}; "
                          "run extract_features.py first")
-    plots_dir = os.path.join(args.output_dir, "plots")
-    os.makedirs(plots_dir, exist_ok=True)
+    plots_dir = args.plots_dir or os.path.join(args.output_dir, "plots")
+    if not args.no_plots:
+        os.makedirs(plots_dir, exist_ok=True)
 
     names = None
     if args.channel_avg:

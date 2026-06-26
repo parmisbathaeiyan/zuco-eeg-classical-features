@@ -85,7 +85,8 @@ def feature_association(X, y, feature_names, mutual_info=False, seed=42):
     return pd.concat([df, meta], axis=1)
 
 
-def analyze(X, y, feature_names, out_dir, mutual_info=False, top_k=20, seed=42):
+def analyze(X, y, feature_names, out_dir, plots_dir=None, mutual_info=False,
+            top_k=20, seed=42):
     os.makedirs(out_dir, exist_ok=True)
     df = feature_association(X, y, feature_names, mutual_info=mutual_info, seed=seed)
     df.to_csv(os.path.join(out_dir, "feature_association.csv"), index=False)
@@ -98,13 +99,15 @@ def analyze(X, y, feature_names, out_dir, mutual_info=False, top_k=20, seed=42):
     by_stat.to_csv(os.path.join(out_dir, "by_stat.csv"), index=False)
     by_band.to_csv(os.path.join(out_dir, "by_band.csv"), index=False)
 
-    barh_series(by_stat.set_index("stat")["mean_F"][::-1], "Mean ANOVA F by statistic",
-                "mean F", os.path.join(out_dir, "by_stat.png"))
-    if len(by_band):
-        barh_series(by_band.set_index("band")["mean_F"][::-1], "Mean ANOVA F by band (band means)",
-                    "mean F", os.path.join(out_dir, "by_band.png"))
-    barh_series(top.set_index("feature")["f_score"][::-1], f"Top {top_k} features by F",
-                "F", os.path.join(out_dir, "top_features.png"), color="#4C78A8")
+    if plots_dir is not None:
+        os.makedirs(plots_dir, exist_ok=True)
+        barh_series(by_stat.set_index("stat")["mean_F"][::-1], "Mean ANOVA F by statistic",
+                    "mean F", os.path.join(plots_dir, "by_stat.png"))
+        if len(by_band):
+            barh_series(by_band.set_index("band")["mean_F"][::-1], "Mean ANOVA F by band (band means)",
+                        "mean F", os.path.join(plots_dir, "by_band.png"))
+        barh_series(top.set_index("feature")["f_score"][::-1], f"Top {top_k} features by F",
+                    "F", os.path.join(plots_dir, "top_features.png"), color="#4C78A8")
 
     md = _report(df, top, by_stat, by_band, top_k)
     with open(os.path.join(out_dir, "associations.md"), "w") as f:
@@ -173,7 +176,7 @@ def subject_association(subjects, feature_names, seed=42):
     return agg, len(subjects), per_subject_nsig
 
 
-def analyze_subject(subjects, feature_names, out_dir, top_k=20, seed=42):
+def analyze_subject(subjects, feature_names, out_dir, plots_dir=None, top_k=20, seed=42):
     os.makedirs(out_dir, exist_ok=True)
     agg, n_subj, per_nsig = subject_association(subjects, feature_names, seed=seed)
     agg.to_csv(os.path.join(out_dir, "subject_feature_association.csv"), index=False)
@@ -191,8 +194,10 @@ def analyze_subject(subjects, feature_names, out_dir, top_k=20, seed=42):
     by_stat, by_band = _roll("stat"), _roll("band")
     by_stat.to_csv(os.path.join(out_dir, "subject_by_stat.csv"), index=False)
     by_band.to_csv(os.path.join(out_dir, "subject_by_band.csv"), index=False)
-    barh_series(by_stat.set_index("stat")["mean_F"][::-1], "Mean F by statistic (per-subject avg)",
-                "mean F", os.path.join(out_dir, "subject_by_stat.png"))
+    if plots_dir is not None:
+        os.makedirs(plots_dir, exist_ok=True)
+        barh_series(by_stat.set_index("stat")["mean_F"][::-1], "Mean F by statistic (per-subject avg)",
+                    "mean F", os.path.join(plots_dir, "subject_by_stat.png"))
 
     n = len(agg)
     md = "\n".join([

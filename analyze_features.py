@@ -26,6 +26,8 @@ def parse_args():
     p.add_argument("--mode", choices=["pooled", "subject", "both"], default="both")
     p.add_argument("--channel-avg", action="store_true",
                    help="collapse per-channel features to 24 family means first")
+    p.add_argument("--plots-dir", default=None,
+                   help="where to write the bar plots; omit to save numbers (csv) only")
     p.add_argument("--mutual-info", action="store_true",
                    help="also compute mutual information, pooled only (slower)")
     p.add_argument("--top-k", type=int, default=20)
@@ -68,8 +70,8 @@ def main():
         names_p = names
         if args.channel_avg:
             X, names_p = channel_average(X, names)
-        df, _ = analyze(X, y, names_p, out_dir, mutual_info=args.mutual_info,
-                        top_k=args.top_k, seed=args.seed)
+        df, _ = analyze(X, y, names_p, out_dir, plots_dir=args.plots_dir,
+                        mutual_info=args.mutual_info, top_k=args.top_k, seed=args.seed)
         n_sig = int((df["f_pvalue"] < 0.05).sum())
         print(f"pooled: {len(df)} features, {n_sig} with p<0.05 "
               f"(~{0.05 * len(df):.0f} by chance)")
@@ -80,7 +82,8 @@ def main():
         if args.channel_avg:
             names_s = channel_average(subjects[0][0], names)[1]
             subjects = [(channel_average(X, names)[0], y) for X, y in subjects]
-        agg, _ = analyze_subject(subjects, names_s, out_dir, top_k=args.top_k, seed=args.seed)
+        agg, _ = analyze_subject(subjects, names_s, out_dir, plots_dir=args.plots_dir,
+                                 top_k=args.top_k, seed=args.seed)
         print(f"subject: {len(subjects)} subjects; most consistent feature significant "
               f"in {int(agg['n_sig_subjects'].max())}/{len(subjects)} subjects")
 

@@ -90,11 +90,19 @@ python make_tables.py --results-dir results
 `extract_features.py` is resumable — a subject whose `.npz` already exists is
 skipped (`--overwrite` to recompute). Results land in
 `results/subject/<SUBJ>/<clf>.json`, `results/subject/summary_<clf>.json`,
-`results/pooled/<clf>.json`, with plots under `results/plots/` (per-subject
-accuracy vs baseline, pooled confusion matrix) and tables under
-`results/tables/`. `make_tables.py` also writes a consolidated `report.md`
-(headline numbers + summary + per-subject tables, each with the gap to the
-majority baseline) and prints it.
+`results/pooled/<clf>.json`, and tables under `results/tables/`.
+`make_tables.py` also writes a consolidated `report.md` (headline numbers +
+summary + per-subject tables, each with the gap to the majority baseline).
+
+**Versioning:** there's no special folder structure to set up — every script
+writes the full tree under whatever `--output-dir` you pass, so just tag the
+path (`results/v2_meanfeatures`, …) to keep runs side by side.
+
+**Numbers vs plots:** the result tree holds only numbers (json/csv/md). Plots
+are regenerable from those, so they're written separately via `--plots-dir`
+(`run.py`, `analyze_features.py`) and `--out-dir` (`plot_montage.py`) — point
+them at a scratch folder to view without cluttering the results, or use
+`--no-plots` / omit `--plots-dir` to skip them entirely.
 
 If your EEG isn't sampled at 500 Hz, pass `--fs`.
 
