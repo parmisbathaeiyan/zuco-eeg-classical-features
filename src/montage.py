@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.colors import TwoSlopeNorm
+from matplotlib.colors import Normalize, TwoSlopeNorm
 from scipy.interpolate import griddata
 
 
@@ -82,7 +82,7 @@ def plot_layout(labels, coords, out_path, landmarks=None, all_labels=False):
     plt.close(fig)
 
 
-def topomap(ax, values, X, Y, cmap="magma", center=None, n_grid=200):
+def topomap(ax, values, X, Y, cmap, vmin, vmax, norm=None, n_grid=200):
     R = np.hypot(X, Y).max() * 1.15
     gx, gy = np.meshgrid(np.linspace(-R, R, n_grid), np.linspace(-R, R, n_grid))
     gz = griddata((X, Y), values, (gx, gy), method="cubic")
@@ -90,12 +90,8 @@ def topomap(ax, values, X, Y, cmap="magma", center=None, n_grid=200):
     gz = np.where(np.isnan(gz), gz_near, gz)
     gz[np.hypot(gx, gy) > R] = np.nan
 
-    kw = {}
-    if center is not None:
-        m = np.nanmax(np.abs(values))
-        m = m if m > 0 else 1.0
-        kw["norm"] = TwoSlopeNorm(vmin=-m, vcenter=center, vmax=m)
-    cf = ax.contourf(gx, gy, gz, levels=14, cmap=cmap, **kw)
+    levels = np.linspace(vmin, vmax, 15)
+    cf = ax.contourf(gx, gy, gz, levels=levels, cmap=cmap, norm=norm, extend="both")
     ax.scatter(X, Y, c="k", s=6, zorder=3)
     _draw_head(ax, R)
     ax.set_aspect("equal")
@@ -105,26 +101,44 @@ def topomap(ax, values, X, Y, cmap="magma", center=None, n_grid=200):
     return cf
 
 
-def montage_grid(families, coords, out_path, cmap="magma", center=None,
-                 ncols=4, suptitle=""):
-    """families: ordered dict name -> length-105 value vector."""
+def montage_grid(families, coords, out_path, cmap="magma", center=None, ncols=4,
+                 suptitle="", sig=None, thresh=None, thresh_label="p<0.05"):
+    """One topomap per family, all sharing a colour scale so equal values get the
+    same colour. `sig` (name -> bool mask) stars significant channels; `thresh`
+    draws the significance cutoff on the shared colorbar (sequential maps only).
+    """
     X, Y = project_2d(coords)
     items = list(families.items())
+    allv = np.concatenate([v[np.isfinite(v)] for v in families.values()])
+    if center is not None:
+        m = float(np.nanmax(np.abs(allv))) or 1.0
+        vmin, vmax, norm = -m, m, TwoSlopeNorm(vmin=-m, vcenter=center, vmax=m)
+    else:
+        vmin, vmax = float(np.nanmin(allv)), float(np.nanmax(allv))
+        norm = Normalize(vmin=vmin, vmax=vmax)
+
     n = len(items)
     ncols = min(ncols, n)
     nrows = int(np.ceil(n / ncols))
     fig, axes = plt.subplots(nrows, ncols, figsize=(3.0 * ncols, 3.3 * nrows))
     axes = np.atleast_1d(axes).ravel()
 
+    cf = None
     for ax, (name, vals) in zip(axes, items):
-        cf = topomap(ax, vals, X, Y, cmap=cmap, center=center)
-        peak = np.nanmax(np.abs(vals)) if center is not None else np.nanmax(vals)
-        ax.set_title(f"{name}\nmax {peak:.2f}", fontsize=9)
-        fig.colorbar(cf, ax=ax, fraction=0.046, pad=0.04)
+        cf = topomap(ax, vals, X, Y, cmap=cmap, vmin=vmin, vmax=vmax, norm=norm)
+        if sig is not None and sig.get(name) is not None and sig[name].any():
+            ax.scatter(X[sig[name]], Y[sig[name]], marker="*", s=55, c="white",
+                       edgecolors="k", linewidths=0.4, zorder=4)
+        ax.set_title(name, fontsize=9)
     for ax in axes[n:]:
         ax.axis("off")
+
+    cb = fig.colorbar(cf, ax=axes.tolist(), fraction=0.025, pad=0.02)
+    if thresh is not None and center is None and vmin <= thresh <= vmax:
+        cb.ax.axhline(thresh, color="#15d015", lw=2)
+        cb.ax.text(1.6, thresh, f" {thresh_label}\n(★ sig.)", color="#0a8a0a",
+                   fontsize=8, va="center")
     if suptitle:
         fig.suptitle(suptitle, fontsize=13)
-    fig.tight_layout()
-    fig.savefig(out_path, dpi=140)
+    fig.savefig(out_path, dpi=140, bbox_inches="tight")
     plt.close(fig)

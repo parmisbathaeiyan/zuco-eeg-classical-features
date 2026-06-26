@@ -31,16 +31,22 @@ def parse_args():
 
 
 def _families(df, block, key, names, score, n_ch):
+    """Return value vectors and (if available) per-channel p<0.05 masks per family."""
     sub = df[df["block"] == block]
-    out = {}
+    vals, sig = {}, {}
     for name in names:
         rows = sub[sub[key] == name]
         if rows.empty:
             continue
-        vals = np.full(n_ch, np.nan)
-        vals[rows["channel"].astype(int).to_numpy()] = rows[score].to_numpy()
-        out[name] = vals
-    return out
+        ch = rows["channel"].astype(int).to_numpy()
+        v = np.full(n_ch, np.nan)
+        v[ch] = rows[score].to_numpy()
+        vals[name] = v
+        if "f_pvalue" in rows:
+            mask = np.zeros(n_ch, dtype=bool)
+            mask[ch] = rows["f_pvalue"].to_numpy() < 0.05
+            sig[name] = mask
+    return vals, sig
 
 
 def main():
@@ -64,17 +70,26 @@ def main():
     cmap = "RdBu_r" if args.score == "spearman_r" else "magma"
     center = 0.0 if args.score == "spearman_r" else None
 
-    stats = _families(df, "raw", "stat", FULL_STATS, args.score, n_ch)
-    bands = _families(df, "bandmean", "band", list(BANDS), args.score, n_ch)
+    stats, stats_sig = _families(df, "raw", "stat", FULL_STATS, args.score, n_ch)
+    bands, bands_sig = _families(df, "bandmean", "band", list(BANDS), args.score, n_ch)
+
+    # F crit (p=0.05) is the smallest F that is still significant; same for all
+    # families since they share degrees of freedom. Only meaningful for f_score.
+    sig_on = args.score == "f_score"
+    thresh = None
+    if sig_on and (df["f_pvalue"] < 0.05).any():
+        thresh = float(df.loc[df["f_pvalue"] < 0.05, "f_score"].min())
 
     if stats:
         montage_grid(stats, coords, os.path.join(out_dir, f"montage_stats_{args.score}.png"),
                      cmap=cmap, center=center, ncols=4,
-                     suptitle=f"Raw-stat families - {args.score} per channel")
+                     suptitle=f"Raw-stat families - {args.score} per channel (shared scale)",
+                     sig=stats_sig if sig_on else None, thresh=thresh)
     if bands:
         montage_grid(bands, coords, os.path.join(out_dir, f"montage_bands_{args.score}.png"),
                      cmap=cmap, center=center, ncols=4,
-                     suptitle=f"Band-mean families - {args.score} per channel")
+                     suptitle=f"Band-mean families - {args.score} per channel (shared scale)",
+                     sig=bands_sig if sig_on else None, thresh=thresh)
     print(f"written -> {out_dir} ({args.score})")
 
 
