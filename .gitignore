@@ -6,7 +6,8 @@ __pycache__/
 features/
 results/
 *.npz
-!zuco_montage.npz   # electrode coordinates, small and needed in the repo
+# but keep the electrode coordinates (small, needed in the repo)
+!zuco_montage.npz
 
 # raw ZuCo data is large and not redistributed here
 *.mat
