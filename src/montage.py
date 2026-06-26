@@ -47,6 +47,41 @@ def _draw_head(ax, R):
                 [0.12 * R, 0.08 * R, -0.08 * R, -0.12 * R], "k", lw=1.5)
 
 
+# A few EGI channels with their 10-20 names, to anchor the layout. Verified
+# against the projection (Cz at centre, Fp1/Fp2 front, Oz back, T7/T8 sides).
+LANDMARKS = {"Cz": "Cz", "E11": "Fz", "E62": "Pz", "E75": "Oz", "E22": "Fp1",
+             "E9": "Fp2", "E45": "T7", "E108": "T8", "E36": "C3", "E104": "C4"}
+
+
+def plot_layout(labels, coords, out_path, landmarks=None, all_labels=False):
+    """Plot the electrode positions; annotate a handful with their 10-20 names so
+    the orientation (nose up, left = left) and rough regions are legible."""
+    landmarks = LANDMARKS if landmarks is None else landmarks
+    X, Y = project_2d(coords)
+    R = np.hypot(X, Y).max() * 1.15
+
+    fig, ax = plt.subplots(figsize=(6.2, 6.4))
+    ax.scatter(X, Y, s=16, c="#bbbbbb", zorder=2)
+    _draw_head(ax, R)
+    for i, lab in enumerate(labels):
+        if all_labels:
+            ax.annotate(lab, (X[i], Y[i]), fontsize=5, ha="center", va="center")
+        elif lab in landmarks:
+            ax.scatter([X[i]], [Y[i]], s=55, c="#4C78A8", zorder=3)
+            ax.annotate(f"{landmarks[lab]} ({lab})", (X[i], Y[i]), fontsize=8,
+                        ha="center", va="bottom", xytext=(0, 5),
+                        textcoords="offset points", weight="bold")
+    ax.text(0, R * 1.18, "nose", ha="center", fontsize=8)
+    ax.set_aspect("equal")
+    ax.axis("off")
+    ax.set_xlim(-R * 1.3, R * 1.3)
+    ax.set_ylim(-R * 1.3, R * 1.4)
+    ax.set_title("Electrode layout (nose up, left ear = left)", fontsize=11)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=140)
+    plt.close(fig)
+
+
 def topomap(ax, values, X, Y, cmap="magma", center=None, n_grid=200):
     R = np.hypot(X, Y).max() * 1.15
     gx, gy = np.meshgrid(np.linspace(-R, R, n_grid), np.linspace(-R, R, n_grid))

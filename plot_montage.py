@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 
 from src.config import BANDS, FULL_STATS
-from src.montage import load_montage, montage_grid
+from src.montage import load_montage, montage_grid, plot_layout
 
 
 def parse_args():
@@ -25,6 +25,8 @@ def parse_args():
     p.add_argument("--score", choices=["f_score", "spearman_r"], default="f_score")
     p.add_argument("--out-dir", default=None,
                    help="where to write the topomaps (default <results-dir>/montage)")
+    p.add_argument("--all-labels", action="store_true",
+                   help="label every electrode in the layout, not just the anchors")
     return p.parse_args()
 
 
@@ -55,6 +57,10 @@ def main():
 
     out_dir = args.out_dir or os.path.join(args.results_dir, "montage")
     os.makedirs(out_dir, exist_ok=True)
+
+    plot_layout(labels, coords, os.path.join(out_dir, "montage_layout.png"),
+                all_labels=args.all_labels)
+
     cmap = "RdBu_r" if args.score == "spearman_r" else "magma"
     center = 0.0 if args.score == "spearman_r" else None
 
