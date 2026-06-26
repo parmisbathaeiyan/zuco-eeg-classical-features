@@ -104,15 +104,25 @@ A separate, classifier-free view of how each feature relates to sentiment:
 
 ```bash
 python analyze_features.py --features-dir features --output-dir results
-python analyze_features.py --mutual-info      # also compute MI (slower)
+python analyze_features.py --mode subject     # per-subject only
+python analyze_features.py --mutual-info      # also compute MI, pooled (slower)
 ```
 
-It pools every subject and scores each feature three conventional ways — ANOVA
-F-test, Spearman against the ordinal label, and (optional) mutual information —
-writing `results/associations/feature_association.csv`, roll-ups by stat and
-band, bar plots, and an `associations.md`. The headline it reports is how many
-features clear p < 0.05 versus how many would by chance (`0.05 x n_features`); if
-those are similar there is no real univariate signal.
+It scores each feature three conventional ways — ANOVA F-test, Spearman against
+the ordinal label, and (optional) mutual information — in two modes (`--mode`,
+default both):
+
+- **pooled** — all subjects stacked. Writes `feature_association.csv`, roll-ups
+  by stat/band, bar plots, and `associations.md`. Headline: how many features
+  clear p < 0.05 versus chance (`0.05 x n_features`).
+- **subject** — runs the association *within each subject*, then aggregates.
+  Writes `subject_feature_association.csv` and `subject_report.md`, where the key
+  number is how many subjects each feature is significant in (consistency across
+  readers is far stronger evidence than a single pooled hit). A feature would
+  land in ~`0.05 x n_subjects` readers by chance.
+
+If pooled and subject disagree, trust the subject view — pooling lets one
+reader's quirk masquerade as signal.
 
 This is univariate screening, not RSA — it relates single features to the label,
 rather than comparing the pairwise-similarity structure of EEG patterns to a

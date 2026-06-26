@@ -140,3 +140,66 @@ def _report(df, top, by_stat, by_band, top_k):
     if len(by_band):
         lines += ["", "## By band (band-mean features)", "", to_markdown(by_band)]
     return "\n".join(lines) + "\n"
+
+
+def subject_association(subjects, feature_names, seed=42):
+    """Run the association within each subject, then aggregate across subjects.
+
+    subjects: list of (X, y). For each feature we keep how many subjects it is
+    significant in (p<0.05) and its mean F / Spearman. A feature significant in
+    many subjects is far more credible than one that only shows up in the pooled
+    set, where a single subject's quirk can carry it.
+    """
+    per = [feature_association(X, y, feature_names, seed=seed) for X, y in subjects]
+    P = np.column_stack([d["f_pvalue"].to_numpy() for d in per])
+    F = np.column_stack([d["f_score"].to_numpy() for d in per])
+    R = np.column_stack([d["spearman_r"].to_numpy() for d in per])
+    agg = pd.DataFrame({
+        "feature": feature_names,
+        "n_sig_subjects": (P < 0.05).sum(1).astype(int),
+        "mean_F": F.mean(1),
+        "mean_spearman": R.mean(1),
+    })
+    agg = pd.concat([agg, pd.DataFrame([parse_name(n) for n in feature_names])], axis=1)
+    per_subject_nsig = (P < 0.05).sum(0).astype(int)   # significant features per subject
+    return agg, len(subjects), per_subject_nsig
+
+
+def analyze_subject(subjects, feature_names, out_dir, top_k=20, seed=42):
+    os.makedirs(out_dir, exist_ok=True)
+    agg, n_subj, per_nsig = subject_association(subjects, feature_names, seed=seed)
+    agg.to_csv(os.path.join(out_dir, "subject_feature_association.csv"), index=False)
+
+    top = agg.sort_values(["n_sig_subjects", "mean_F"], ascending=False).head(top_k)
+
+    def _roll(key):
+        g = agg.dropna(subset=[key]).groupby(key)
+        out = g.agg(n_features=("feature", "size"),
+                    mean_n_sig=("n_sig_subjects", "mean"),
+                    max_n_sig=("n_sig_subjects", "max"),
+                    mean_F=("mean_F", "mean")).sort_values("mean_F", ascending=False)
+        return out.round(3).reset_index()
+
+    by_stat, by_band = _roll("stat"), _roll("band")
+    by_stat.to_csv(os.path.join(out_dir, "subject_by_stat.csv"), index=False)
+    by_band.to_csv(os.path.join(out_dir, "subject_by_band.csv"), index=False)
+    barh_series(by_stat.set_index("stat")["mean_F"][::-1], "Mean F by statistic (per-subject avg)",
+                "mean F", os.path.join(out_dir, "subject_by_stat.png"))
+
+    n = len(agg)
+    md = "\n".join([
+        "# Feature - label association (per subject)", "",
+        f"{n_subj} subjects analysed separately, then aggregated. Per subject, "
+        f"**{per_nsig.mean():.0f}** of {n} features clear p<0.05 on average "
+        f"(~{0.05 * n:.0f} expected by chance). Most consistent feature: "
+        f"`{top.iloc[0]['feature']}`, significant in "
+        f"**{int(top.iloc[0]['n_sig_subjects'])}/{n_subj}** subjects "
+        f"(a feature would hit ~{0.05 * n_subj:.1f}/{n_subj} by chance).", "",
+        f"## Top {top_k} features (by #subjects significant)", "",
+        to_markdown(top[["feature", "n_sig_subjects", "mean_F", "mean_spearman"]].round(4)),
+        "", "## By statistic", "", to_markdown(by_stat),
+        "", "## By band (band-mean features)", "", to_markdown(by_band),
+    ]) + "\n"
+    with open(os.path.join(out_dir, "subject_report.md"), "w") as f:
+        f.write(md)
+    return agg, md
