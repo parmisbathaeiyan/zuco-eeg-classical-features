@@ -17,6 +17,7 @@ import warnings
 import numpy as np
 
 from src.classification import cross_validate, summarise_subjects
+from src.features import channel_average
 from src.plots import confusion_plot, subject_bar
 
 # Some channels are flat (e.g. a reference), so a few shape stats are all-NaN and
@@ -33,12 +34,18 @@ def parse_args():
     p.add_argument("--n-folds", type=int, default=5)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--no-plots", action="store_true")
+    p.add_argument("--channel-avg", action="store_true",
+                   help="collapse the per-channel features to 24 family means "
+                        "(16 stats + 8 band-means) before classifying")
     return p.parse_args()
 
 
-def load_subject(path):
+def load_subject(path, names=None):
     d = np.load(path, allow_pickle=True)
-    return d["X"], d["label"].astype(int), d["sentence_id"].astype(int)
+    X = d["X"]
+    if names is not None:        # channel-averaged features
+        X, _ = channel_average(X, names)
+    return X, d["label"].astype(int), d["sentence_id"].astype(int)
 
 
 def save_json(obj, path):
@@ -47,11 +54,11 @@ def save_json(obj, path):
         json.dump(obj, f, indent=2)
 
 
-def run_subject(args, files, plots_dir):
+def run_subject(args, files, plots_dir, names=None):
     per_subject = {}
     for path in files:
         subject = os.path.basename(path).rsplit(".", 1)[0]
-        X, y, _ = load_subject(path)
+        X, y, _ = load_subject(path, names)
         result = cross_validate(X, y, args.classifier, args.n_folds, args.seed)
         per_subject[subject] = result
         save_json(result, os.path.join(
@@ -72,10 +79,10 @@ def run_subject(args, files, plots_dir):
             title=f"Subject-specific accuracy ({args.classifier})")
 
 
-def run_pooled(args, files, plots_dir):
+def run_pooled(args, files, plots_dir, names=None):
     Xs, ys, groups = [], [], []
     for path in files:
-        X, y, sid = load_subject(path)
+        X, y, sid = load_subject(path, names)
         Xs.append(X)
         ys.append(y)
         groups.append(sid)
@@ -102,14 +109,20 @@ def main():
                          "run extract_features.py first")
     plots_dir = os.path.join(args.output_dir, "plots")
     os.makedirs(plots_dir, exist_ok=True)
-    print(f"{len(files)} subjects, classifier={args.classifier}")
+
+    names = None
+    if args.channel_avg:
+        with open(os.path.join(args.features_dir, "feature_names.json")) as f:
+            names = json.load(f)
+    print(f"{len(files)} subjects, classifier={args.classifier}"
+          f"{', channel-averaged (24 features)' if names else ''}")
 
     if args.mode in ("subject", "both"):
         print("subject-specific:")
-        run_subject(args, files, plots_dir)
+        run_subject(args, files, plots_dir, names)
     if args.mode in ("pooled", "both"):
         print("pooled:")
-        run_pooled(args, files, plots_dir)
+        run_pooled(args, files, plots_dir, names)
     print(f"done -> {args.output_dir}")
 
 

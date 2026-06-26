@@ -128,6 +128,18 @@ This is univariate screening, not RSA — it relates single features to the labe
 rather than comparing the pairwise-similarity structure of EEG patterns to a
 label-based similarity structure.
 
+## Channel-averaged variant
+
+`--channel-avg` (on both `run.py` and `analyze_features.py`) collapses the 2520
+per-channel features to **24 family means** (16 stats + 8 band-means) before
+classifying / correlating — derived straight from the cache, no re-extraction.
+The idea: averaging over electrodes cancels channel-independent noise and can
+surface a *diffuse* (whole-scalp) effect. It only helps if any signal is spatially
+spread; a localized effect gets diluted, and cumulative stats like `line_length`
+will instead amplify the sentence-length confound, so read any gain there with
+suspicion. Send it to a separate `--output-dir` to keep it beside the per-channel
+run.
+
 ## Colab
 
 `notebooks/zuco_eeg_features.ipynb` drives the whole thing: mount Drive (the

@@ -10,6 +10,7 @@ Everything is NaN-aware: ZuCo leaves missing EEG as NaN, and we let those
 propagate to NaN features here and impute them later, inside the CV pipeline.
 """
 
+import re
 import warnings
 
 import numpy as np
@@ -167,3 +168,23 @@ def infer_channels(sentences):
         if s.get("raw") is not None:
             return s["raw"].shape[0]
     return None
+
+
+_CH_SUFFIX = re.compile(r"_ch\d+$")
+
+
+def channel_average(X, feature_names):
+    """Collapse per-channel features to one mean per family.
+
+    Columns sharing a name once the `_ch<n>` suffix is stripped (e.g. all
+    `raw_mean_ch*`) are averaged over channels, turning the 2520-wide matrix into
+    24 family means (16 stats + 8 band-means). NaN-aware, so the flat reference
+    channel doesn't poison the average.
+    """
+    keys = [_CH_SUFFIX.sub("", n) for n in feature_names]
+    order = list(dict.fromkeys(keys))
+    cols = {k: [] for k in order}
+    for i, k in enumerate(keys):
+        cols[k].append(i)
+    averaged = [nanmean(X[:, idx], axis=1) for idx in cols.values()]
+    return np.column_stack(averaged).astype(np.float32), order

@@ -27,18 +27,26 @@ from .tables import to_markdown
 
 
 def parse_name(name):
-    """Split a feature name into block / band / stat / channel."""
+    """Split a feature name into block / band / stat / channel.
+
+    Handles both per-channel names (`raw_mean_ch3`) and channel-averaged ones
+    (`raw_mean`, `bandmean_t1`) where there is no `_ch<n>` suffix.
+    """
     parts = name.split("_")
-    channel = int(parts[-1][2:]) if parts[-1].startswith("ch") else None
+    if parts[-1].startswith("ch") and parts[-1][2:].isdigit():
+        channel = int(parts[-1][2:])
+        parts = parts[:-1]
+    else:
+        channel = None
     block = parts[0]
     band = stat = None
     if block == "raw":
-        stat = "_".join(parts[1:-1])
+        stat = "_".join(parts[1:])
     elif block == "bandmean":
-        band = parts[1]
+        band = parts[1] if len(parts) > 1 else None
     elif block == "band":
         band = parts[1]
-        stat = "_".join(parts[2:-1])
+        stat = "_".join(parts[2:])
     return {"block": block, "band": band, "stat": stat, "channel": channel}
 
 
